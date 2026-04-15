@@ -1,61 +1,113 @@
-const cron       = require('node-cron');
-const nodemailer  = require('nodemailer');
+const cron      = require('node-cron');
+const nodemailer = require('nodemailer');
 const { db, FINE_PER_DAY } = require('./db');
 require('dotenv').config();
 
-/* ── Mailer ── */
+/* ── Mailer (supports EMAIL_USER/PASS or SMTP_USER/PASS) ── */
+const smtpUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+const smtpPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+
 const transporter = nodemailer.createTransport({
   host:   process.env.SMTP_HOST || 'smtp.gmail.com',
   port:   parseInt(process.env.SMTP_PORT || '587'),
   secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+  auth: { user: smtpUser, pass: smtpPass },
 });
 
+const APP_URL = process.env.CLIENT_URL || 'https://library-management-system-kappa-lime.vercel.app';
+
+/* ── Beautiful HTML email ── */
+function buildEmailHTML({ name, bookTitle, dueDate, type, fine }) {
+  const dueFmt = new Date(dueDate).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+
+  const bannerColor = {
+    '3day':   '#7c3aed',
+    '1day':   '#f59e0b',
+    'due':    '#ef4444',
+    'overdue':'#dc2626',
+  }[type] || '#7c3aed';
+
+  const icon = { '3day':'📅', '1day':'⚠️', 'due':'🚨', 'overdue':'❌' }[type];
+
+  const headline = {
+    '3day':   `Due in 3 Days`,
+    '1day':   `Due Tomorrow`,
+    'due':    `Due TODAY`,
+    'overdue':`Overdue — Fine Accruing`,
+  }[type];
+
+  const body = {
+    '3day':   `Your book <b>"${bookTitle}"</b> is due on <b>${dueFmt}</b>. Please return it on time to avoid a fine of ₹${FINE_PER_DAY}/day.`,
+    '1day':   `Your book <b>"${bookTitle}"</b> is due <b>tomorrow (${dueFmt})</b>. Visit the library before closing time.`,
+    'due':    `Your book <b>"${bookTitle}"</b> is due <b>TODAY</b>. Please return it immediately to avoid fines of ₹${FINE_PER_DAY}/day.`,
+    'overdue':`Your book <b>"${bookTitle}"</b> was due on ${dueFmt}.<br>Current fine: <b style="color:#f87171">₹${fine}</b> (₹${FINE_PER_DAY}/day). Return immediately to stop accruing more.`,
+  }[type];
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:20px;background:#0a0e1a;font-family:'Segoe UI',Inter,Arial,sans-serif;">
+  <div style="max-width:540px;margin:0 auto;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,${bannerColor},${bannerColor}cc);padding:28px 32px;">
+      <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);margin-bottom:6px;">
+        Govt. Hydro Engineering College · GHEC Library
+      </div>
+      <div style="font-size:24px;font-weight:800;color:#fff;">${icon} ${headline}</div>
+    </div>
+
+    <!-- Body -->
+    <div style="background:#111827;padding:32px;">
+      <p style="font-size:17px;font-weight:600;color:#f1f5f9;margin:0 0 12px;">Hello, ${name}!</p>
+      <p style="font-size:15px;line-height:1.75;color:#94a3b8;margin:0 0 24px;">${body}</p>
+
+      <!-- Book card -->
+      <div style="background:#1e2235;border-radius:12px;padding:20px 24px;border-left:4px solid ${bannerColor};margin-bottom:28px;">
+        <div style="font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:10px;">Book Details</div>
+        <div style="font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:4px;">${bookTitle}</div>
+        <div style="font-size:13.5px;color:#94a3b8;">Due Date: ${dueFmt}</div>
+        ${fine > 0 ? `<div style="font-size:14px;color:#f87171;font-weight:700;margin-top:8px;">Fine: ₹${fine}</div>` : ''}
+      </div>
+
+      <!-- CTA -->
+      <a href="${APP_URL}/student/login"
+        style="display:inline-block;background:${bannerColor};color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 28px;border-radius:10px;margin-bottom:28px;">
+        View My Library Portal →
+      </a>
+
+      <p style="font-size:12px;color:#475569;border-top:1px solid rgba(255,255,255,.07);padding-top:20px;margin:0;">
+        This is an automated reminder from the GHEC Library System.<br>
+        Bandla, Bilaspur, Himachal Pradesh · <a href="https://ghec.ac.in" style="color:#7c3aed;">ghec.ac.in</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/* ── Send one reminder ── */
 async function sendReminderEmail(to, name, bookTitle, dueDate, type, fine = 0) {
-  if (!process.env.SMTP_USER) {
-    console.log(`📧 [DEMO] ${type.toUpperCase()} reminder → ${to} | "${bookTitle}"`);
+  if (!smtpUser) {
+    console.log(`📧 [DEMO — no EMAIL_USER set] ${type} reminder → ${to} | "${bookTitle}"`);
     return;
   }
 
   const subjects = {
-    '3day':   `📚 Book Due in 3 Days: ${bookTitle}`,
-    '1day':   `⚠️  Book Due Tomorrow: ${bookTitle}`,
-    'due':    `🚨 Book Due TODAY: ${bookTitle}`,
-    'overdue':`❌ Overdue Book: ${bookTitle} — Fine ₹${fine}`,
-  };
-
-  const messages = {
-    '3day':   `Your book "<b>${bookTitle}</b>" is due on <b>${new Date(dueDate).toLocaleDateString('en-IN')}</b>. Please return it on time to avoid fines.`,
-    '1day':   `Your book "<b>${bookTitle}</b>" is due <b>TOMORROW</b> (${new Date(dueDate).toLocaleDateString('en-IN')}). Visit the library before closing time.`,
-    'due':    `Your book "<b>${bookTitle}</b>" is due <b>TODAY</b>. Please return it immediately to avoid a fine of ₹${FINE_PER_DAY}/day.`,
-    'overdue':`Your book "<b>${bookTitle}</b>" was due on ${new Date(dueDate).toLocaleDateString('en-IN')}. <br>Current fine: <b>₹${fine}</b> (₹${FINE_PER_DAY}/day). Return immediately to stop accruing fines.`,
+    '3day':   `📅 Book Due in 3 Days: ${bookTitle} — GHEC Library`,
+    '1day':   `⚠️  Book Due Tomorrow: ${bookTitle} — GHEC Library`,
+    'due':    `🚨 Return TODAY: ${bookTitle} — GHEC Library`,
+    'overdue':`❌ Overdue: ${bookTitle} — Fine ₹${fine} — GHEC Library`,
   };
 
   await transporter.sendMail({
-    from: `"Library — College LMS" <${process.env.SMTP_USER}>`,
+    from:    `"GHEC Library" <${smtpUser}>`,
     to,
     subject: subjects[type],
-    html: `
-      <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0a0e1a;color:#e2e8f0;border-radius:16px;overflow:hidden;">
-        <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:28px 32px;">
-          <h1 style="margin:0;font-size:22px;color:#fff;">📚 Library Management System</h1>
-        </div>
-        <div style="padding:32px;">
-          <p style="font-size:18px;font-weight:600;margin-bottom:8px;color:#f1f5f9;">Hello, ${name}!</p>
-          <p style="font-size:15px;line-height:1.7;color:#94a3b8;">${messages[type]}</p>
-          <div style="background:#1e2235;padding:20px;border-radius:12px;margin:24px 0;border-left:4px solid #6366f1;">
-            <p style="margin:0 0 8px;color:#e2e8f0;"><b>Book:</b> ${bookTitle}</p>
-            <p style="margin:0 0 8px;color:#e2e8f0;"><b>Due Date:</b> ${new Date(dueDate).toLocaleDateString('en-IN')}</p>
-            ${fine > 0 ? `<p style="margin:0;color:#f87171;"><b>Current Fine:</b> ₹${fine}</p>` : ''}
-          </div>
-          <p style="color:#64748b;font-size:13px;">Log in to your student portal to view all your issued books.</p>
-        </div>
-      </div>
-    `,
-  }).catch(err => console.error(`Email failed for ${to}:`, err.message));
+    html:    buildEmailHTML({ name, bookTitle, dueDate, type, fine }),
+  }).catch(err => console.error(`❌ Email failed for ${to}:`, err.message));
+
+  console.log(`📧 Sent ${type} reminder → ${to}`);
 }
 
 /* ── Mark issues overdue ── */
@@ -82,6 +134,7 @@ async function sendReminders() {
     WHERE ib.status IN ('active','overdue')
   `).all();
 
+  let sent = 0;
   for (const issue of issues) {
     const due      = new Date(issue.due_date);
     const daysLeft = Math.ceil((due - now) / 86400000);
@@ -92,7 +145,7 @@ async function sendReminders() {
     if      (daysLeft === 3)  type = '3day';
     else if (daysLeft === 1)  type = '1day';
     else if (daysLeft === 0)  type = 'due';
-    else if (daysLeft <  0) { type = 'overdue'; fine = Math.abs(daysLeft) * FINE_PER_DAY; }
+    else if (daysLeft  <  0) { type = 'overdue'; fine = Math.abs(daysLeft) * FINE_PER_DAY; }
 
     if (!type) continue;
 
@@ -106,7 +159,9 @@ async function sendReminders() {
 
     await sendReminderEmail(issue.email, issue.name, issue.title, issue.due_date, type, fine);
     db.prepare('INSERT INTO reminders (issue_id,reminder_type) VALUES (?,?)').run(issue.id, type);
+    sent++;
   }
+  console.log(`📧 Reminder run complete — ${sent} email(s) sent`);
 }
 
 /* ── Scheduled jobs ── */
