@@ -52,7 +52,9 @@ export default function Books() {
   const [saving,   setSaving]   = useState(false);
   const [deleting, setDeleting] = useState(null);
 
-  // ISBN scan state
+  // ISBN / barcode lookup state
+  // scanMode: null | 'camera' | 'manual'
+  const [scanMode,     setScanMode]     = useState(null);
   const [showScanner,  setShowScanner]  = useState(false);
   const [fetchingISBN, setFetchingISBN] = useState(false);
 
@@ -239,32 +241,66 @@ export default function Books() {
       </main>
 
       {/* ── Add Book Modal ── */}
-      <Modal open={addOpen} onClose={() => { setAddOpen(false); setShowScanner(false); }} title="Add New Book" maxWidth={540}>
+      <Modal open={addOpen} onClose={() => { setAddOpen(false); setScanMode(null); setShowScanner(false); }} title="Add New Book" maxWidth={540}>
 
-        {/* Scan barcode banner */}
-        {!showScanner && (
-          <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'rgba(14,165,233,.08)', border:'1px solid rgba(14,165,233,.2)', borderRadius:'var(--r-lg)', marginBottom:20, cursor:'pointer' }}
-            onClick={() => setShowScanner(true)}>
-            <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(14,165,233,.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9V6a2 2 0 012-2h3M15 4h3a2 2 0 012 2v3M21 15v3a2 2 0 01-2 2h-3M9 20H6a2 2 0 01-2-2v-3"/>
-                <rect x="7" y="7" width="10" height="10" rx="1"/>
-              </svg>
+        {/* Step 1 — choose lookup method */}
+        {!scanMode && !fetchingISBN && (
+          <div style={{ marginBottom:20 }}>
+            <p style={{ fontSize:12.5, color:'var(--text-3)', marginBottom:10 }}>Auto-fill title &amp; author from Google Books — optional, or fill manually below.</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              {/* Camera option */}
+              <button type="button"
+                onClick={() => { setScanMode('camera'); setShowScanner(true); }}
+                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'16px 12px', background:'rgba(14,165,233,.07)', border:'2px solid rgba(14,165,233,.25)', borderRadius:'var(--r-lg)', cursor:'pointer', transition:'all var(--tr-f)' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor='#0ea5e9'}
+                onMouseLeave={e => e.currentTarget.style.borderColor='rgba(14,165,233,.25)'}>
+                <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(14,165,233,.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9V6a2 2 0 012-2h3M15 4h3a2 2 0 012 2v3M21 15v3a2 2 0 01-2 2h-3M9 20H6a2 2 0 01-2-2v-3"/>
+                    <rect x="7" y="7" width="10" height="10" rx="1"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontWeight:700, color:'#0ea5e9', fontSize:13 }}>Scan QR / Barcode</div>
+                  <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2 }}>Use camera to scan</div>
+                </div>
+              </button>
+
+              {/* Manual ISBN option */}
+              <button type="button"
+                onClick={() => setScanMode('manual')}
+                style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'16px 12px', background:'rgba(124,58,237,.07)', border:'2px solid rgba(124,58,237,.25)', borderRadius:'var(--r-lg)', cursor:'pointer', transition:'all var(--tr-f)' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor='#7c3aed'}
+                onMouseLeave={e => e.currentTarget.style.borderColor='rgba(124,58,237,.25)'}>
+                <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(124,58,237,.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                    <line x1="6" y1="8" x2="6" y2="8.01"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="6" y1="11" x2="14" y2="11"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontWeight:700, color:'#7c3aed', fontSize:13 }}>Enter ISBN</div>
+                  <div style={{ fontSize:11.5, color:'var(--text-3)', marginTop:2 }}>Type the ISBN number on the book</div>
+                </div>
+              </button>
             </div>
-            <div>
-              <div style={{ fontWeight:700, color:'#0ea5e9', fontSize:13.5 }}>Scan Book Barcode</div>
-              <div style={{ fontSize:12, color:'var(--text-3)' }}>Point camera at the ISBN barcode — title &amp; author auto-fill from Google Books</div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" strokeWidth="2" strokeLinecap="round" style={{ marginLeft:'auto', flexShrink:0 }}><path d="M9 18l6-6-6-6"/></svg>
+            <p style={{ fontSize:11.5, color:'var(--text-4)', marginTop:10, textAlign:'center' }}>
+              No camera / no ISBN? Skip this and fill in the form below manually.
+            </p>
           </div>
         )}
 
-        {/* Scanner */}
-        {showScanner && (
+        {/* Camera scanner */}
+        {scanMode === 'camera' && showScanner && !fetchingISBN && (
           <div style={{ marginBottom:20 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <span style={{ fontSize:13.5, fontWeight:600, color:'var(--text-2)' }}>📷 Scanning ISBN Barcode…</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowScanner(false)}>✕ Close</button>
+              <span style={{ fontSize:13.5, fontWeight:600, color:'var(--text-2)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ marginRight:6, verticalAlign:'middle' }}>
+                  <path d="M3 9V6a2 2 0 012-2h3M15 4h3a2 2 0 012 2v3M21 15v3a2 2 0 01-2 2h-3M9 20H6a2 2 0 01-2-2v-3"/><rect x="7" y="7" width="10" height="10" rx="1"/>
+                </svg>
+                Point at QR code or ISBN barcode
+              </span>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setScanMode(null); setShowScanner(false); }}>← Back</button>
             </div>
             <Suspense fallback={<div style={{ display:'flex', justifyContent:'center', padding:32 }}><Spinner /></div>}>
               <ISBNScanner onScan={handleISBNScan} />
@@ -272,40 +308,50 @@ export default function Books() {
           </div>
         )}
 
-        {/* Fetching indicator */}
-        {fetchingISBN && (
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'var(--bg-elevated)', borderRadius:'var(--r-lg)', marginBottom:16 }}>
-            <Spinner size="sm" />
-            <span style={{ fontSize:13, color:'var(--text-2)' }}>Looking up book in Google Books…</span>
-          </div>
-        )}
-
-        {/* Manual ISBN lookup (fallback if camera doesn't work) */}
-        {!showScanner && !fetchingISBN && (
-          <div style={{ display:'flex', gap:8, marginBottom:16, alignItems:'center' }}>
-            <div style={{ flex:1, position:'relative' }}>
+        {/* Manual ISBN input */}
+        {scanMode === 'manual' && !fetchingISBN && (
+          <div style={{ marginBottom:20 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <label className="form-label" style={{ margin:0 }}>ISBN Number</label>
+              <button className="btn btn-ghost btn-sm" onClick={() => setScanMode(null)}>← Back</button>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
               <input
                 className="form-input"
+                autoFocus
                 value={form.isbn}
                 onChange={set('isbn')}
-                placeholder="Or type / paste ISBN (e.g. 9789332901384) and press Enter"
-                style={{ fontFamily:'var(--font-m)', paddingRight:90 }}
+                placeholder="e.g. 9789332901384 — find it on the back cover"
+                style={{ fontFamily:'var(--font-m)', flex:1 }}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (form.isbn) handleISBNScan(form.isbn); } }}
               />
+              <button type="button" className="btn btn-p" onClick={() => { if (form.isbn) handleISBNScan(form.isbn); }}
+                disabled={!form.isbn}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Lookup
+              </button>
             </div>
-            <button type="button" className="btn btn-ghost" onClick={() => { if (form.isbn) handleISBNScan(form.isbn); }}
-              style={{ flexShrink:0, borderColor:'var(--accent)', color:'var(--accent)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Lookup
-            </button>
+            <p style={{ fontSize:11.5, color:'var(--text-4)', marginTop:6 }}>Press Enter or click Lookup to auto-fill from Google Books</p>
           </div>
         )}
 
-        {/* Auto-filled indicator */}
+        {/* Fetching spinner */}
+        {fetchingISBN && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 16px', background:'var(--bg-elevated)', borderRadius:'var(--r-lg)', marginBottom:16 }}>
+            <Spinner size="sm" />
+            <span style={{ fontSize:13, color:'var(--text-2)' }}>Looking up in Google Books…</span>
+          </div>
+        )}
+
+        {/* Auto-filled success */}
         {form.title && form.isbn && !fetchingISBN && (
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'rgba(16,185,129,.08)', border:'1px solid rgba(16,185,129,.2)', borderRadius:'var(--r-lg)', marginBottom:16 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
-            <span style={{ fontSize:12.5, color:'var(--success-lt)' }}>Book details auto-filled from Google Books</span>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', background:'rgba(16,185,129,.08)', border:'1px solid rgba(16,185,129,.2)', borderRadius:'var(--r-lg)', marginBottom:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+              <span style={{ fontSize:12.5, color:'var(--success-lt)', fontWeight:600 }}>Auto-filled from Google Books</span>
+            </div>
+            <button type="button" onClick={() => { setScanMode(null); setShowScanner(false); }}
+              style={{ fontSize:11.5, color:'var(--text-4)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>Scan another</button>
           </div>
         )}
 
