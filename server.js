@@ -13,14 +13,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'lms_secret_2024_change_me';
 
 app.use(express.json());
 
-// CORS — allow the Vercel frontend (or any origin in dev)
-const ALLOWED_ORIGINS = process.env.CLIENT_URL
-  ? [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:5174']
-  : true;  // true = allow all (dev)
-app.use(cors({
-  origin: ALLOWED_ORIGINS,
-  credentials: true,
-}));
+// Allow all origins — JWT tokens protect individual endpoints
+app.use(cors());
 
 // Serve built React app in production (only when not split-deployed)
 if (process.env.SERVE_CLIENT === 'true') {
