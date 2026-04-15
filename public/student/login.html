@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Login — Library Management System</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card anim-fade-up">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🎓</div>
+      <h1 class="auth-title">Student Login</h1>
+      <p class="auth-sub">Enter your Student ID and password to access the library portal</p>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="student-id">Student ID</label>
+        <input id="student-id" class="form-input" type="text" placeholder="e.g. 2022CSE042" autocomplete="username" required>
+        <p class="form-hint">Your college roll number / enrollment number</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input id="password" class="form-input" type="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+
+      <button id="login-btn" type="submit" class="btn btn-p btn-lg" style="width:100%;margin-top:8px">
+        <span id="btn-text">Sign In</span>
+        <span id="btn-spinner" class="spinner" style="display:none;width:16px;height:16px;border-width:2px"></span>
+      </button>
+    </form>
+
+    <p style="text-align:center;margin-top:24px;font-size:13.5px;color:var(--text-3)">
+      New student? <a href="/student/register.html" style="color:var(--primary-lt);font-weight:600">Register here →</a>
+    </p>
+    <p style="text-align:center;margin-top:12px;font-size:13px;color:var(--text-4)">
+      <a href="/" style="color:var(--text-4)">← Back to home</a>
+    </p>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script>
+  if (LMS.isLoggedIn() && LMS.getUser()?.role === 'student')
+    window.location.href = '/student/dashboard.html';
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id  = document.getElementById('student-id').value.trim();
+    const pwd = document.getElementById('password').value;
+    const alertBox = document.getElementById('alert-box');
+    const btn  = document.getElementById('login-btn');
+    const txt  = document.getElementById('btn-text');
+    const spin = document.getElementById('btn-spinner');
+
+    alertBox.innerHTML = '';
+    btn.disabled = true; txt.textContent = 'Signing in…'; spin.style.display = 'block';
+
+    try {
+      const data = await LMS.api('POST', '/auth/student/login', { id, password: pwd });
+      LMS.setSession(data.token, data.student);
+      window.location.href = '/student/dashboard.html';
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+    } finally {
+      btn.disabled = false; txt.textContent = 'Sign In'; spin.style.display = 'none';
+    }
+  });
+</script>
+</body>
+</html>

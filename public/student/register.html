@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Registration — Library Management System</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card anim-fade-up" style="max-width:520px">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">📝</div>
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-sub">Register with your college details to access the library</p>
+    </div>
+
+    <div id="alert-box"></div>
+
+    <form id="reg-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="sid">Student ID *</label>
+          <input id="sid" class="form-input" type="text" placeholder="2022CSE042" required>
+          <p class="form-hint">Your roll / enrollment number</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="branch">Branch *</label>
+          <select id="branch" class="form-select" required>
+            <option value="">Select branch</option>
+            <option value="CSE">CSE — Computer Science</option>
+            <option value="EE">EE — Electrical Engineering</option>
+            <option value="Civil">Civil Engineering</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="name">Full Name *</label>
+        <input id="name" class="form-input" type="text" placeholder="Priya Sharma" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">College Email *</label>
+        <input id="email" class="form-input" type="email" placeholder="priya@college.edu" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="sem">Semester</label>
+          <select id="sem" class="form-select">
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+            <option value="4">Semester 4</option>
+            <option value="5">Semester 5</option>
+            <option value="6">Semester 6</option>
+            <option value="7">Semester 7</option>
+            <option value="8">Semester 8</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone">Phone (optional)</label>
+          <input id="phone" class="form-input" type="tel" placeholder="9876543210">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="pwd">Password *</label>
+          <input id="pwd" class="form-input" type="password" placeholder="Min 6 characters" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="cpwd">Confirm Password *</label>
+          <input id="cpwd" class="form-input" type="password" placeholder="Repeat password" required>
+        </div>
+      </div>
+
+      <!-- Password strength -->
+      <div id="pwd-strength" style="margin-top:-10px;margin-bottom:16px;display:none">
+        <div style="display:flex;gap:4px;margin-bottom:5px">
+          <div class="strength-bar" style="height:3px;flex:1;border-radius:2px;background:var(--border);transition:background .3s"></div>
+          <div class="strength-bar" style="height:3px;flex:1;border-radius:2px;background:var(--border);transition:background .3s"></div>
+          <div class="strength-bar" style="height:3px;flex:1;border-radius:2px;background:var(--border);transition:background .3s"></div>
+          <div class="strength-bar" style="height:3px;flex:1;border-radius:2px;background:var(--border);transition:background .3s"></div>
+        </div>
+        <span id="pwd-label" style="font-size:11px;color:var(--text-3)"></span>
+      </div>
+
+      <button id="reg-btn" type="submit" class="btn btn-p btn-lg" style="width:100%;margin-top:4px">
+        <span id="btn-text">Create Account</span>
+        <span id="btn-spin" class="spinner" style="display:none;width:16px;height:16px;border-width:2px"></span>
+      </button>
+    </form>
+
+    <p style="text-align:center;margin-top:22px;font-size:13.5px;color:var(--text-3)">
+      Already registered? <a href="/student/login.html" style="color:var(--primary-lt);font-weight:600">Sign in →</a>
+    </p>
+    <p style="text-align:center;margin-top:10px;font-size:13px"><a href="/" style="color:var(--text-4)">← Back to home</a></p>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script>
+  if (LMS.isLoggedIn() && LMS.getUser()?.role === 'student')
+    window.location.href = '/student/dashboard.html';
+
+  /* ── Password strength ── */
+  const pwdEl    = document.getElementById('pwd');
+  const strengthEl = document.getElementById('pwd-strength');
+  const bars     = document.querySelectorAll('.strength-bar');
+  const pwdLabel = document.getElementById('pwd-label');
+  const colors   = ['#ef4444','#f97316','#f59e0b','#10b981'];
+  const labels   = ['Too weak','Fair','Good','Strong'];
+
+  pwdEl.addEventListener('input', () => {
+    const v = pwdEl.value;
+    strengthEl.style.display = v ? 'block' : 'none';
+    let score = 0;
+    if (v.length >= 6)  score++;
+    if (v.length >= 10) score++;
+    if (/[A-Z]/.test(v) || /\d/.test(v)) score++;
+    if (/[^A-Za-z0-9]/.test(v)) score++;
+    bars.forEach((b, i) => b.style.background = i < score ? colors[score-1] : 'var(--border)');
+    pwdLabel.textContent = labels[score-1] || '';
+    pwdLabel.style.color = colors[score-1] || 'var(--text-3)';
+  });
+
+  /* ── Submit ── */
+  document.getElementById('reg-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alertBox = document.getElementById('alert-box');
+    alertBox.innerHTML = '';
+
+    const pwd  = document.getElementById('pwd').value;
+    const cpwd = document.getElementById('cpwd').value;
+    if (pwd !== cpwd) {
+      alertBox.innerHTML = `<div class="alert alert-error">⚠️ Passwords do not match</div>`;
+      return;
+    }
+
+    const btn  = document.getElementById('reg-btn');
+    const txt  = document.getElementById('btn-text');
+    const spin = document.getElementById('btn-spin');
+    btn.disabled = true; txt.textContent = 'Creating…'; spin.style.display = 'block';
+
+    try {
+      const data = await LMS.api('POST', '/auth/student/register', {
+        id:       document.getElementById('sid').value.trim().toUpperCase(),
+        name:     document.getElementById('name').value.trim(),
+        email:    document.getElementById('email').value.trim(),
+        branch:   document.getElementById('branch').value,
+        semester: parseInt(document.getElementById('sem').value),
+        phone:    document.getElementById('phone').value.trim(),
+        password: pwd,
+      });
+      LMS.setSession(data.token, data.student);
+      window.location.href = '/student/dashboard.html';
+    } catch (err) {
+      alertBox.innerHTML = `<div class="alert alert-error">⚠️ ${err.message}</div>`;
+    } finally {
+      btn.disabled = false; txt.textContent = 'Create Account'; spin.style.display = 'none';
+    }
+  });
+</script>
+</body>
+</html>

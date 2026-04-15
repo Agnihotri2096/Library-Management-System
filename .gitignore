@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Environment
+.env
+.env.local
+
+# Database (never commit)
+*.db
+*.db-shm
+*.db-wal
+
+# Build output
+client/dist/
+
+# Logs
+*.log
+/tmp/
+
+# OS
+.DS_Store
+Thumbs.db

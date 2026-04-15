@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: ghec-library-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true      # Render auto-generates a secure random value
+      - key: CLIENT_URL
+        sync: false              # Set this manually to your Vercel URL
+      - key: EMAIL_USER
+        sync: false              # Optional: for overdue email notifications
+      - key: EMAIL_PASS
+        sync: false
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1
