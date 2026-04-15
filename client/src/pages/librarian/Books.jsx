@@ -280,13 +280,35 @@ export default function Books() {
           </div>
         )}
 
+        {/* Manual ISBN lookup (fallback if camera doesn't work) */}
+        {!showScanner && !fetchingISBN && (
+          <div style={{ display:'flex', gap:8, marginBottom:16, alignItems:'center' }}>
+            <div style={{ flex:1, position:'relative' }}>
+              <input
+                className="form-input"
+                value={form.isbn}
+                onChange={set('isbn')}
+                placeholder="Or type / paste ISBN (e.g. 9789332901384) and press Enter"
+                style={{ fontFamily:'var(--font-m)', paddingRight:90 }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (form.isbn) handleISBNScan(form.isbn); } }}
+              />
+            </div>
+            <button type="button" className="btn btn-ghost" onClick={() => { if (form.isbn) handleISBNScan(form.isbn); }}
+              style={{ flexShrink:0, borderColor:'var(--accent)', color:'var(--accent)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Lookup
+            </button>
+          </div>
+        )}
+
         {/* Auto-filled indicator */}
-        {form.title && form.isbn && (
+        {form.title && form.isbn && !fetchingISBN && (
           <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background:'rgba(16,185,129,.08)', border:'1px solid rgba(16,185,129,.2)', borderRadius:'var(--r-lg)', marginBottom:16 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
             <span style={{ fontSize:12.5, color:'var(--success-lt)' }}>Book details auto-filled from Google Books</span>
           </div>
         )}
+
 
         <form onSubmit={addBook}>
           <div className="form-row">
